@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  app:
+    image: m0hamedabed/chat-ai-combined:latest
+    container_name: chat-ai-combined-app
+    ports:
+      - "80:80"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      MONGO_URI: ${MONGO_URI:-mongodb://admin:password@mongodb:27017/chatbot_db?authSource=admin}
+      CALENDAR_URL: ${CALENDAR_URL}
+      CALENDAR_USERNAME: ${CALENDAR_USERNAME}
+      CALENDAR_PASSWORD: ${CALENDAR_PASSWORD}
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - chat_ai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mongodb:
+    image: mongo:5.0
+    container_name: chatbot_mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: chatbot_db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    networks:
+      - chat_ai
+
+volumes:
+  mongodb_data:
+
+networks:
+  chat_ai:
+    driver: bridge
